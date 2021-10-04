@@ -2,6 +2,7 @@
 #include <queue>
 #include <set>
 #include <unordered_map>
+#include <vector>
 
 #include "../geometry/halfedge.h"
 #include "debug.h"
@@ -35,9 +36,35 @@
     edges and faces with a single face, returning the new face.
  */
 std::optional<Halfedge_Mesh::FaceRef> Halfedge_Mesh::erase_vertex(Halfedge_Mesh::VertexRef v) {
+    if (v->on_boundary()) return std::nullopt;
+    auto face = new_face();
+    auto h = v->halfedge();
+    do {
+        erase(h);
+        erase(h->twin());
+        erase(h->edge());
+        erase(h->face());
+        h = h->twin()->next();
+    } while (h != v->halfedge());
+    erase(v);
 
-    (void)v;
-    return std::nullopt;
+    h = v->halfedge()->next();
+    do {
+        auto n = h;
+        while (n->next()->vertex() != v) n = n->next();
+        while (h->next() != n) {
+            h->face() = face;
+            h = h->next();
+        }
+        n = n->twin()->next();
+        n->vertex()->halfedge() = n;
+        h->next() = n;
+        h->face() = face;
+        h = n;
+    } while (h != v->halfedge()->next());
+    face->halfedge() = h;
+
+    return face;
 }
 
 /*
@@ -45,7 +72,6 @@ std::optional<Halfedge_Mesh::FaceRef> Halfedge_Mesh::erase_vertex(Halfedge_Mesh:
     merged face.
  */
 std::optional<Halfedge_Mesh::FaceRef> Halfedge_Mesh::erase_edge(Halfedge_Mesh::EdgeRef e) {
-
     (void)e;
     return std::nullopt;
 }
@@ -55,7 +81,6 @@ std::optional<Halfedge_Mesh::FaceRef> Halfedge_Mesh::erase_edge(Halfedge_Mesh::E
     the new vertex created by the collapse.
 */
 std::optional<Halfedge_Mesh::VertexRef> Halfedge_Mesh::collapse_edge(Halfedge_Mesh::EdgeRef e) {
-
     (void)e;
     return std::nullopt;
 }
@@ -65,7 +90,6 @@ std::optional<Halfedge_Mesh::VertexRef> Halfedge_Mesh::collapse_edge(Halfedge_Me
     the new vertex created by the collapse.
 */
 std::optional<Halfedge_Mesh::VertexRef> Halfedge_Mesh::collapse_face(Halfedge_Mesh::FaceRef f) {
-
     (void)f;
     return std::nullopt;
 }
@@ -75,7 +99,6 @@ std::optional<Halfedge_Mesh::VertexRef> Halfedge_Mesh::collapse_face(Halfedge_Me
     flipped edge.
 */
 std::optional<Halfedge_Mesh::EdgeRef> Halfedge_Mesh::flip_edge(Halfedge_Mesh::EdgeRef e) {
-
     (void)e;
     return std::nullopt;
 }
@@ -86,7 +109,6 @@ std::optional<Halfedge_Mesh::EdgeRef> Halfedge_Mesh::flip_edge(Halfedge_Mesh::Ed
     the edge that was split, rather than the new edges.
 */
 std::optional<Halfedge_Mesh::VertexRef> Halfedge_Mesh::split_edge(Halfedge_Mesh::EdgeRef e) {
-
     (void)e;
     return std::nullopt;
 }
@@ -125,7 +147,6 @@ std::optional<Halfedge_Mesh::VertexRef> Halfedge_Mesh::split_edge(Halfedge_Mesh:
     implement!)
 */
 std::optional<Halfedge_Mesh::FaceRef> Halfedge_Mesh::bevel_vertex(Halfedge_Mesh::VertexRef v) {
-
     // Reminder: You should set the positions of new vertices (v->pos) to be exactly
     // the same as wherever they "started from."
 
@@ -142,7 +163,6 @@ std::optional<Halfedge_Mesh::FaceRef> Halfedge_Mesh::bevel_vertex(Halfedge_Mesh:
     implement!)
 */
 std::optional<Halfedge_Mesh::FaceRef> Halfedge_Mesh::bevel_edge(Halfedge_Mesh::EdgeRef e) {
-
     // Reminder: You should set the positions of new vertices (v->pos) to be exactly
     // the same as wherever they "started from."
 
@@ -160,7 +180,6 @@ std::optional<Halfedge_Mesh::FaceRef> Halfedge_Mesh::bevel_edge(Halfedge_Mesh::E
     implement!)
 */
 std::optional<Halfedge_Mesh::FaceRef> Halfedge_Mesh::bevel_face(Halfedge_Mesh::FaceRef f) {
-
     // Reminder: You should set the positions of new vertices (v->pos) to be exactly
     // the same as wherever they "started from."
 
@@ -180,13 +199,12 @@ std::optional<Halfedge_Mesh::FaceRef> Halfedge_Mesh::bevel_face(Halfedge_Mesh::F
 */
 void Halfedge_Mesh::bevel_vertex_positions(const std::vector<Vec3>& start_positions,
                                            Halfedge_Mesh::FaceRef face, float tangent_offset) {
-
     std::vector<HalfedgeRef> new_halfedges;
     auto h = face->halfedge();
     do {
         new_halfedges.push_back(h);
         h = h->next();
-    } while(h != face->halfedge());
+    } while (h != face->halfedge());
 
     (void)new_halfedges;
     (void)start_positions;
@@ -216,13 +234,12 @@ void Halfedge_Mesh::bevel_vertex_positions(const std::vector<Vec3>& start_positi
 */
 void Halfedge_Mesh::bevel_edge_positions(const std::vector<Vec3>& start_positions,
                                          Halfedge_Mesh::FaceRef face, float tangent_offset) {
-
     std::vector<HalfedgeRef> new_halfedges;
     auto h = face->halfedge();
     do {
         new_halfedges.push_back(h);
         h = h->next();
-    } while(h != face->halfedge());
+    } while (h != face->halfedge());
 
     (void)new_halfedges;
     (void)start_positions;
@@ -254,14 +271,13 @@ void Halfedge_Mesh::bevel_edge_positions(const std::vector<Vec3>& start_position
 void Halfedge_Mesh::bevel_face_positions(const std::vector<Vec3>& start_positions,
                                          Halfedge_Mesh::FaceRef face, float tangent_offset,
                                          float normal_offset) {
-
-    if(flip_orientation) normal_offset = -normal_offset;
+    if (flip_orientation) normal_offset = -normal_offset;
     std::vector<HalfedgeRef> new_halfedges;
     auto h = face->halfedge();
     do {
         new_halfedges.push_back(h);
         h = h->next();
-    } while(h != face->halfedge());
+    } while (h != face->halfedge());
 
     (void)new_halfedges;
     (void)start_positions;
@@ -274,7 +290,6 @@ void Halfedge_Mesh::bevel_face_positions(const std::vector<Vec3>& start_position
     Splits all non-triangular faces into triangles.
 */
 void Halfedge_Mesh::triangulate() {
-
     // For each face...
 }
 
@@ -335,7 +350,6 @@ void Halfedge_Mesh::triangulate() {
     centroids.
 */
 void Halfedge_Mesh::linear_subdivide_positions() {
-
     // For each vertex, assign Vertex::new_pos to
     // its original position, Vertex::pos.
 
@@ -358,7 +372,6 @@ void Halfedge_Mesh::linear_subdivide_positions() {
     Note: this will only be called on meshes without boundary
 */
 void Halfedge_Mesh::catmullclark_subdivide_positions() {
-
     // The implementation for this routine should be
     // a lot like Halfedge_Mesh:linear_subdivide_positions:(),
     // except that the calculation of the positions themsevles is
@@ -377,7 +390,6 @@ void Halfedge_Mesh::catmullclark_subdivide_positions() {
     using Loop subdivision. Note: this is will only be called on triangle meshes.
 */
 void Halfedge_Mesh::loop_subdivide() {
-
     // Each vertex and edge of the original mesh can be associated with a
     // vertex in the new (subdivided) mesh.
     // Therefore, our strategy for computing the subdivided vertex locations is to
@@ -387,24 +399,24 @@ void Halfedge_Mesh::loop_subdivide() {
     // the new subdivided (fine) mesh, which has more elements to traverse.  We
     // will then assign vertex positions in
     // the new mesh based on the values we computed for the original mesh.
-    
+
     // Compute new positions for all the vertices in the input mesh using
     // the Loop subdivision rule and store them in Vertex::new_pos.
     //    At this point, we also want to mark each vertex as being a vertex of the
     //    original mesh. Use Vertex::is_new for this.
-    
+
     // Next, compute the subdivided vertex positions associated with edges, and
     // store them in Edge::new_pos.
-    
+
     // Next, we're going to split every edge in the mesh, in any order.
-    // We're also going to distinguish subdivided edges that came from splitting 
-    // an edge in the original mesh from new edges by setting the boolean Edge::is_new. 
+    // We're also going to distinguish subdivided edges that came from splitting
+    // an edge in the original mesh from new edges by setting the boolean Edge::is_new.
     // Note that in this loop, we only want to iterate over edges of the original mesh.
     // Otherwise, we'll end up splitting edges that we just split (and the
     // loop will never end!)
-    
+
     // Now flip any new edge that connects an old and new vertex.
-    
+
     // Finally, copy new vertex positions into the Vertex::pos.
 }
 
@@ -414,7 +426,6 @@ void Halfedge_Mesh::loop_subdivide() {
     (e.g. you may want to return false if this is not a triangle mesh)
 */
 bool Halfedge_Mesh::isotropic_remesh() {
-
     // Compute the mean edge length.
     // Repeat the four main steps for 5 or 6 iterations
     // -> Split edges much longer than the target length (being careful about
@@ -442,7 +453,6 @@ struct Edge_Record {
     Edge_Record(std::unordered_map<Halfedge_Mesh::VertexRef, Mat4>& vertex_quadrics,
                 Halfedge_Mesh::EdgeRef e)
         : edge(e) {
-
         // Compute the combined quadric from the edge endpoints.
         // -> Build the 3x3 linear system whose solution minimizes the quadric error
         //    associated with these two endpoints.
@@ -458,7 +468,7 @@ struct Edge_Record {
 
 /* Comparison operator for Edge_Records so std::set will properly order them */
 bool operator<(const Edge_Record& r1, const Edge_Record& r2) {
-    if(r1.cost != r2.cost) {
+    if (r1.cost != r2.cost) {
         return r1.cost < r2.cost;
     }
     Halfedge_Mesh::EdgeRef e1 = r1.edge;
@@ -520,12 +530,13 @@ bool operator<(const Edge_Record& r1, const Edge_Record& r2) {
  *    queue.remove( item2 );
  *
  */
-template<class T> struct PQueue {
+template <class T>
+struct PQueue {
     void insert(const T& item) {
         queue.insert(item);
     }
     void remove(const T& item) {
-        if(queue.find(item) != queue.end()) {
+        if (queue.find(item) != queue.end()) {
             queue.erase(item);
         }
     }
@@ -549,7 +560,6 @@ template<class T> struct PQueue {
     further without destroying it.)
 */
 bool Halfedge_Mesh::simplify() {
-
     std::unordered_map<VertexRef, Mat4> vertex_quadrics;
     std::unordered_map<FaceRef, Mat4> face_quadrics;
     std::unordered_map<EdgeRef, Edge_Record> edge_records;

@@ -76,13 +76,63 @@ std::optional<Halfedge_Mesh::FaceRef> Halfedge_Mesh::erase_edge(Halfedge_Mesh::E
     return std::nullopt;
 }
 
+Halfedge_Mesh::HalfedgeRef prev_halfedge(Halfedge_Mesh::HalfedgeRef e) {
+    auto h = e;
+    while (h->next() != e) {
+        h = h->next();
+    }
+    return h;
+}
+
+void collapse_edge_one_side(Halfedge_Mesh* mesh, Halfedge_Mesh::HalfedgeRef s, Halfedge_Mesh::VertexRef new_v) {
+    auto h = s;
+    auto p = h->vertex();
+    mesh->erase(p);
+    mesh->erase(h);
+    do {
+        h->vertex() = new_v;
+        new_v->halfedge() = h;
+        h = h->twin()->next();
+    } while (h != s);
+
+    h = s;
+    int cnt = 0;
+    while (h->next() != s) h = h->next(), cnt += 1;
+    h->next() = s->next();
+    h->face()->halfedge() = h;
+    if (cnt == 2) {  // this side of face is triangle, collapse it
+        auto a = s->next();
+        mesh->erase(a->edge());
+        mesh->erase(a);
+        mesh->erase(a->twin());
+        mesh->erase(a->face());
+        auto b = a->next();
+        auto c = prev_halfedge(a->twin());
+        a->twin()->vertex()->halfedge() = b;
+        c->next() = b;
+        b->next() = a->twin()->next();
+        b->face() = a->twin()->face();
+        b->face()->halfedge() = b;
+        new_v->halfedge() = b->twin();
+    }
+}
+
 /*
     This method should collapse the given edge and return an iterator to
     the new vertex created by the collapse.
 */
 std::optional<Halfedge_Mesh::VertexRef> Halfedge_Mesh::collapse_edge(Halfedge_Mesh::EdgeRef e) {
-    (void)e;
-    return std::nullopt;
+    if (e->on_boundary()) return std::nullopt;
+    auto new_v = new_vertex();
+
+    erase(e);
+    auto h = e->halfedge();
+    auto p = h->vertex();
+    new_v->pos = (p->pos + h->twin()->vertex()->pos) / 2;
+    collapse_edge_one_side(this, e->halfedge(), new_v);
+    collapse_edge_one_side(this, e->halfedge()->twin(), new_v);
+
+    return new_v;
 }
 
 /*
